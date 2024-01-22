@@ -20,107 +20,12 @@ for path in image_paths:
   images.append(image)
 images = tf.stack(images)
 
-# Define the generator model
-def build_generator():
-  model = keras.Sequential()
-  model.add(layers.Dense(4*4*256, input_shape=(100,)))
-  model.add(layers.Reshape((4, 4, 256)))
-  model.add(layers.BatchNormalization())
-  model.add(layers.LeakyReLU(0.2))
-  model.add(layers.Conv2DTranspose(128, (5, 5), strides=(2, 2), padding="same"))
-  model.add(layers.BatchNormalization())
-  model.add(layers.LeakyReLU(0.2))
-  model.add(layers.Conv2DTranspose(64, (5, 5), strides=(2, 2), padding="same"))
-  model.add(layers.BatchNormalization())
-  model.add(layers.LeakyReLU(0.2))
-  model.add(layers.Conv2DTranspose(32, (5, 5), strides=(2, 2), padding="same"))
-  model.add(layers.BatchNormalization())
-  model.add(layers.LeakyReLU(0.2))
-  model.add(layers.Conv2DTranspose(3, (5, 5), strides=(2, 2), padding="same", activation="tanh"))
-  return model
-
-# Define the discriminator model
-def build_discriminator():
-  model = keras.Sequential()
-  model.add(layers.Conv2D(32, (5, 5), strides=(2, 2), padding="same", input_shape=(64, 64, 3)))
-  model.add(layers.LeakyReLU(0.2))
-  model.add(layers.Dropout(0.3))
-  model.add(layers.Conv2D(64, (5, 5), strides=(2, 2), padding="same"))
-  model.add(layers.LeakyReLU(0.2))
-  model.add(layers.Dropout(0.3))
-  model.add(layers.Conv2D(128, (5, 5), strides=(2, 2), padding="same"))
-  model.add(layers.LeakyReLU(0.2))
-  model.add(layers.Dropout(0.3))
-  model.add(layers.Conv2D(256, (5, 5), strides=(2, 2), padding="same"))
-  model.add(layers.LeakyReLU(0.2))
-  model.add(layers.Dropout(0.3))
-  model.add(layers.Flatten())
-  model.add(layers.Dense(1))
-  return model
-
-# Create the generator and discriminator
-generator = build_generator()
-discriminator = build_discriminator()
-
-# Define the loss function and the optimizer
-bce = tf.keras.losses.BinaryCrossentropy(from_logits=True)
-def discriminator_loss(real_output, fake_output):
-  real_loss = bce(tf.ones_like(real_output), real_output)
-  fake_loss = bce(tf.zeros_like(fake_output), fake_output)
-  total_loss = real_loss + fake_loss
-  return total_loss
-def generator_loss(fake_output):
-  return bce(tf.ones_like(fake_output), fake_output)
-generator_optimizer = tf.keras.optimizers.Adam(0.0002, 0.5)
-discriminator_optimizer = tf.keras.optimizers.Adam(0.0002, 0.5)
-
-# Define the training loop
-@tf.function
-def train_step(images):
-  noise = tf.random.normal([batch_size, 100])
-  with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
-    generated_images = generator(noise, training=True)
-    real_output = discriminator(images, training=True)
-    fake_output = discriminator(generated_images, training=True)
-    gen_loss = generator_loss(fake_output)
-    disc_loss = discriminator_loss(real_output, fake_output)
-  gradients_of_generator = gen_tape.gradient(gen_loss, generator.trainable_variables)
-  gradients_of_discriminator = disc_tape.gradient(disc_loss, discriminator.trainable_variables)
-  generator_optimizer.apply_gradients(zip(gradients_of_generator, generator.trainable_variables))
-  discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, discriminator.trainable_variables))
-  return gen_loss, disc_loss
-
-def train(dataset, epochs):
-  for epoch in range(epochs):
-    print(f"Epoch {epoch+1}")
-    for image_batch in dataset:
-      gen_loss, disc_loss = train_step(image_batch)
-    print(f"Generator loss: {gen_loss}, Discriminator loss: {disc_loss}")
-    # Generate and save some images after each epoch
-    generate_and_save_images(generator, epoch+1, seed)
-    # Save the model after each epoch
-    generator.save(f"generator_{epoch+1}.h5")
-    discriminator.save(f"discriminator_{epoch+1}.h5")
-
-# Define a function to generate and save images
-def generate_and_save_images(model, epoch, test_input):
-  predictions = model(test_input, training=False)
-  fig = plt.figure(figsize=(4,4))
-  for i in range(predictions.shape[0]):
-      plt.subplot(4, 4, i+1)
-      plt.imshow((predictions[i, :, :, :] * 127.5 + 127.5) / 255.0)
-      plt.axis('off')
-  plt.savefig(f'image_at_epoch_{epoch:04d}.png')
-  plt.show()
+#Instructions
+As you can see, all you need is to take the name of the
+location and then change the number of epochs as you can write here
 
 # Set some hyperparameters
-epochs =  350
+epochs = 230
 batch_size = 32
 buffer_size = 60000
 seed = tf.random.normal([16, 100])
-
-# Shuffle and batch the data
-dataset = tf.data.Dataset.from_tensor_slices(images).shuffle(buffer_size).batch(batch_size)
-
-# Train the GAN model
-train(dataset, epochs)
